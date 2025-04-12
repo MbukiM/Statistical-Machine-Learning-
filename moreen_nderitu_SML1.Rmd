@@ -1,0 +1,950 @@
+---
+title: "Statistical Machine Learning Assignment 1 SML1"
+author: "Moreen Mbuki"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Statistical Machine Learning
+
+Homework Assignment 1
+
+Due Date: Sunday, December 8, 2024 - By 11:59pm
+
+Exercise 1: (57 points)
+
+
+# Part 1: Dataset Exploration
+
+In this section we are focusing on data exploration and discovery of our data set, which will give insight on the best machine to learning for the prediction. To support the analysis, we have been provided with an univariate dataset, which includes the following variables:
+
+- Y is the response variable
+- X is the explanatory variable 
+
+Plot to visual the relationship and the distribution will be used such as scatter plot to show the relationship between the response and explanatory variable. This is essential because it gives us the insight of the best function space for the machine. 
+
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE,include=FALSE}
+library(class)
+library(MASS)
+library(kernlab)
+library(mlbench)
+library(reshape2)
+library(ROCR)
+library(ggplot2)
+
+```
+
+
+
+```{r,echo=TRUE,cache.comments=TRUE,comment = NA,warning=FALSE,include=FALSE}
+setwd("C:/Users/Administrator/Desktop/AIMS/AIMS Review Phase/Statistical Machine Learning")
+```
+
+
+## 1. Download the file aims-sml-2024-2025-data.csv and load it into RMarkDown.
+
+```{r,echo=TRUE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+data = read.csv("aims-sml-2024-2025-data.csv")
+
+#tail(data) displays the last 5 output of the dataset 
+head(data)
+```
+
+## 2. Determine the size of the dataset n.
+
+
+```{r,echo=TRUE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+n = length(data$x)
+cat("The size of dataset " ,n, "\n")
+```
+
+- The data set is of size n = 225 and the dimensionality of the input space is given by p-1 which is 1, the number of predictor variables (features) in the dataset, excluding the response variable.  The dataset offers sufficient dimensionality for meaningful statistical modeling and machine learning applications.
+
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+str(data)
+dim(data)
+```
+
+
+## 3. Create a scatterplot of y versus x.
+
+
+```{r Scatter plot of Y and X,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+plot(data$x, data$y,
+     main = "Scatter plot of Y and X",
+     xlab = "x",
+     ylab = "y",
+     col="maroon"
+       )
+```
+
+
+- From the scatter plot of x and y, it is clear that the relationship between the two variables is not linear. This observation is crucial because linear regression models, which assume a straight-line relationship between the predictors and the target variable, are not appropriate for such data.
+
+- Since the relationship is not linear, we must explore more flexible models that can capture the complexity of the data. One option is polynomial regression. In polynomial regression, we can introduce higher-degree terms (like $ x^2, x^3$, etc.) to the model, allowing it to accommodate curves and bends in the data.
+ 
+
+
+## 4. Determine whether this is a classification or regression task, and justify your answer.
+
+
+- This is a regression task to be specific it a polynomial regression task, simply because the scatter plot of x and y above exhibit a non-linear relationship between x and y.
+
+- The scatter plot of x and y in this case shows a continuous distribution of the data, indicating that y is continuous and not grouped into distinct classes. This suggests that the problem involves predicting a continuous outcome, which is a mark of regression problems.
+
+
+# Part 2: Theoretical Framework
+
+## 1. Suggest a function space H for this task and write it in mathematical notation.
+
+The non-linear distribution of the data suggests a polynomial regression model techniques should be considered for better model performance.The function space of a polynomial Regression is give as follows 
+
+For the polynomial :
+$$H(\phi)= \begin{cases} f:x \rightarrow y \quad f(x) = a_0 + a_1x + a_2x^2 + \cdot \cdot \cdot + a_px^p \end{cases} \\
+ x\in X , \quad a_j \in R$$
+ 
+## 2. Specify the loss function for this task and justify its use.
+
+The appropriates loss function for the regression task will be Squared Error Loss.
+Squared Error Loss is defined as:
+$$l(Y, f(X)) = (Y-f(X))^2$$
+
+## 3. Derive and write down the theoretical risk R(f) for a candidate function f ∈ H.
+
+- Theoretical risk represents the expected loss or error that a model incurs when predicting outcomes over the entire data-generating distribution. It is calculated as the expectation of a chosen loss function applied to the model's predictions and the true outcomes, considering the joint distribution of the input features (x) and the target variable (y).
+
+- This approach evaluates the model's performance comprehensively, accounting for all possible values the data can take—not just the observed data but also unseen and unobserved instances.
+
+- Theoretical risk thus provides a measure of how well a model generalizes to the entire underlying data distribution.
+
+- The theoretical risk R(f) is given by 
+$$R(f) = \mathbb{E}[l(Y, f(X))] \implies R(f) = \int(y,f(x))P_{x,y}xy \quad dxdy$$
+
+## 4. Write down the expression for the Bayes learning machine f∗(x) in this case.
+
+The Bayes learning machine $f^*(x)$, which minimizes the theoretical risk, is the function that provides the best possible predictions for a given input $x$ under the true data-generating distribution. In the case of regression, the Bayes optimal function is expressed as:
+
+$$f^* = \mathbb{E}(Y|X)$$
+which is 
+$$f^* = argmin\{R(f)\} \quad \text{where} \quad f\in y^* \\
+y^* \quad \text{is the power set}$$
+
+
+
+## 5. Write down the empirical risk ˆR(f) for a candidate function, including all components of the model space. Hint: Decide on a complexity prior to training.
+
+
+Empirical risk is a measure of the error or loss incurred by a machine learning model when evaluated on a finite training dataset. It quantifies how well the model performs in approximating the true target values $(y)$ based on the observed input features $(x)$ in the dataset.
+
+The empirical Risk function will be 
+
+$$\hat{R}(f)= \frac{1}{n}\sum(L(y,f(x_i))$$
+
+$$\hat{R}(f)= \frac{1}{n}\sum(Y-f(X))^2$$
+
+- After finding the empirical error, we check the well-posedness of the model. If the model suffers from a problem of ill-posedness, regularization will be applied to stabilize the model. Regularization incorporates a complexity penalty (or prior) into the empirical risk, leading to a regularized empirical risk:
+
+
+$$\hat{R}_\lambda(f) = \hat{R}(f) + \lambda|| f||_H^2$$
+
+For model selection we use cross Validation error and the model with the rest error is chosen to be the optimal model.
+
+$$ \text{CV}(\lambda) = \text{CV}(\hat{f}_\lambda) = 
+\frac{1}{n} \sum_{i=1}^n L\left(y_i, \hat{f}^{(-1)}_\lambda(x_i)\right)$$
+
+
+
+# Part 3: Estimation and Model Complexity
+
+## 1. Derive the expression for the OLS estimator ˆ f(x) for this problem.
+
+Under the L2 Squared Error Loss function given as follows
+
+$$R(f) = \mathbb{E}(y - f(x))^2$$ 
+Under universal best machine defined as
+
+$$f^* = \mathbb{E}(y|x)$$
+Assuming the that 
+
+$$\mathbb{E}(y|x) = f^*(x)$$
+where  
+$$f^*(x) = a^TX = a_0 + a_1x + a_2x^2 + \cdot \cdot \cdot + a_px^p$$
+
+$$\hat{R}(a) = \|Y - Xa\|^2 = (Y - Xa)^T (Y - Xa)$$
+
+$$y =
+	\begin{bmatrix}
+		y_1 \\
+		y_2 \\
+		\vdots \\
+		y_n
+	\end{bmatrix},
+	X =
+	\begin{bmatrix}
+		1 & x_1 & x_1^2 & \cdots & x_1^p \\
+		1 & x_2 & x_2^2 & \cdots & x_2^p \\
+		\vdots & \vdots & \vdots & \ddots & \vdots \\
+		1 & x_n & x_n^2 & \cdots & x_n^p
+	\end{bmatrix}, \quad
+	a =
+	\begin{bmatrix}
+		a_0 \\
+		a_1 \\
+		\vdots \\
+		a_p
+	\end{bmatrix}$$
+
+where:
+$$Y \in \mathbb{R}^n: observed \quad data,\\
+  X \in \mathbb{R}^{n \times p}: design \quad matrix,\\
+  a \in \mathbb{R}^p: coefficient \quad vector$$
+
+Expand
+
+$$\hat{R}(a) = Y^T Y - 2a^T X^T Y + a^T X^T X a$$
+
+Differentiate $\hat{R}(a)$ with respect to $a$:
+
+$$\frac{\partial \hat{R}(a)}{\partial a} = -2 X^T Y + 2 X^T X a$$
+
+
+  
+Setting
+$$\frac{\partial \hat{R}(a)}{\partial a} = 0$$
+
+$$-2 X^T Y + 2 X^T X a = 0 \quad Simplify \quad X^T X a = X^T Y$$
+
+ 
+If $X^T X$ is invertible, we can solve for $\hat{a}$:
+
+$$\hat{a} = (X^T X)^{-1} X^T Y$$
+
+
+The invertibility of $X^T X$ ensures a unique solution to the normal equation $X^T X a = X^T Y$. If $X^T X$ is not invertible, $(X^T X)^{-1}$ does not exist, and $\hat{a}$ cannot be uniquely determined.
+
+
+$$\frac{\partial \hat{R}(a)}{\partial \hat{a}} = 0 \quad \text{if and only if} \quad X^T X \quad \text{is invertible, then} \quad \hat{a} = (X^T X)^{-1} X^T Y$$
+$$\frac{\partial\hat{R}(a)}{\partial(\hat{a})} = 0 \quad if\quad and \quad only \quad if \quad X^TX \quad is \quad invertible\quad then \quad \hat{a} = (X^TX)^{-1}X^TY$$
+
+
+## 2. Comment extensively on the properties of ˆ f(x).
+
+
+- Normality (with Gaussian errors)
+If the errors follow a normal distribution, the estimates are normally distributed:
+$$\hat{a} \sim \mathcal{N}(a, \sigma^2 (X^\top X)^{-1})$$
+
+  where 𝑋 includes the polynomial terms of 𝑥
+$$ 1, x, x ^2, \cdot \cdot \cdot , x^n$$
+
+- Homoscedasticity:
+$\hat{f}$ assumes that the errors have constant variance. 
+
+- Unbiasedness Estimators 
+The estimators of the polynomial are unbiased estimators of the true values if $\beta$  since the estimated coefficients are unbiased and the error term has zero mean.
+
+$$\mathbb{E}[\hat{a}] = a  \quad and  \quad  \mathbb{E}[\epsilon] = 0$$
+
+- Complexity of the Model- As the degrees of the polynomial increases the model becomes complex which can be difficult to interpret.
+
+## 3. Use V -fold cross-validation (e.g., V =, 5, 10) to determine the optimal complexity (degree p) for the polynomial regression model. Explain what “optimal complexity” means.
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+# Loading the required packages 
+library(caret)
+set.seed(123) # Setting a  seed for consistency 
+
+# declaring the variable
+# From the dataset for easliy referencing 
+ 
+x <- data$x # Predictor Variable 
+y <- data$y # Response variable
+n <- length(y) # Sample size of the data set 
+
+# Creating a function for polynomial regression used to fit polynomial models for the dataset 
+# 
+fun_polynomial <- function(x, y, degree) {
+  data <- data.frame(x = x, y = y)
+  formula <- as.formula(paste("y ~ poly(x,", degree, ", raw=TRUE)"))
+  model <- lm(formula, data)
+  return(model)
+}
+
+# Creating a function to perform V-Fold Cross-Validation
+# 
+Cross_validation <- function(x, y,degree_max, V = 10) {
+  n <- length(y) # Length
+  folds <- sample(rep(1:V, length.out = n))  
+  cv_errors <- numeric(degree_max)  
+  
+  for (p in 1:degree_max) {
+    fold_errors <- numeric(V)
+    for (v in 1:V) {
+      # Split data into training and validation sets
+      train_idx <- which(folds != v)
+      val_idx <- which(folds == v)
+      
+      x_train <- x[train_idx]
+      y_train <- y[train_idx]
+      x_val <- x[val_idx]
+      y_val <- y[val_idx]
+      
+      # Polynomial model fitting 
+      model <- fun_polynomial(x_train, y_train, p)
+      
+      # Predicting the data 
+      y_pred <- predict(model, newdata = data.frame(x = x_val))
+      
+      # Calculating validation error (mean squared error)
+      fold_errors[v] <- mean((y_val - y_pred)^2)
+    }
+    # Average validation error over all folds
+    cv_errors[p] <- mean(fold_errors)
+  }
+  
+  return(cv_errors)
+}
+
+# Creating and Empirical Risk function to compute Empirical Risk
+empirical_fun <- function(x, y, degree_max) {
+  errors <- numeric(degree_max)
+  for (p in 1:degree_max) {
+    model <- fun_polynomial(x, y, p)
+    y_pred <- predict(model, newdata = data.frame(x = x))
+    errors[p] <- mean((y - y_pred)^2)
+  }
+  return(errors)
+}
+```
+
+
+ 
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+# Run Cross-Validation and Compute Empirical Risk by caling the created function above 
+# 
+degree_max <- 25  # Maximum polynomial degree to consider
+cat("Maximum degree", degree_max,"\n")
+
+# cross validation errors 
+cv_errors <- Cross_validation(x, y, degree_max, V = 15)  # 10-Fold Cross-Validation
+cat("Cross Validation Errors", head(cv_errors),"\n")
+
+# Calculating the empirical error 
+empirical_errors <- empirical_fun(x, y, degree_max)
+cat("Emprical Errors:", head(empirical_errors), "\n")
+
+
+``` 
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+# Find the Optimal Degree
+optimal_degree <- which.min(cv_errors)
+cat("The optimal polynomial degree is:", optimal_degree, "\n")
+cat("Cross-validation error at optimal degree:", cv_errors[optimal_degree], "\n")
+cat("Empirical error at optimal degree:", empirical_errors[optimal_degree], "\n")
+```
+
+- Optimal Complexity of a model can be determined by the following 
+
+- Cross Validation - Using the v-fold cross validation to evaluate the model performance on the unseen data for different level of complexity. We choose the complexity that minimizes the cross validated test error.
+
+- Regularization - This shrinks the coefficients to control complexity by introducing regularized empirical risk defined as 
+$$ \hat{R}_\lambda(f) = \hat{R}(f) + \lambda|| f||_H^2$$
+
+
+
+## 4. Plot the cross-validation error and empirical risk as functions of p. Comment on the plot.
+
+```{r Cross-Validation Error Vs Empirical Risk Plot,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+# Plot Cross Validation for the dataset 
+degrees <- 1:degree_max
+cv_data <- data.frame(Degree = degrees, CV_Error = cv_errors, Empirical_Risk = empirical_errors)
+
+
+# Plot Cross Validation for the dataset
+ggplot(cv_data, aes(x = Degree)) +
+  geom_line(aes(y = CV_Error, color = "Cross-Validation Error"), size = 1.2) +
+  geom_line(aes(y = Empirical_Risk, color = "Empirical Risk Error "), size = 1.2) +
+  labs(title = "Cross-Validation Error Vs Empirical Risk Plot",
+       x = "Polynomial Degree", y = "Error") +
+  scale_color_manual(name = "Error Type", values = c("pink", "red")) +
+  theme_minimal()
+
+
+
+```
+
+
+#### Intepretation 
+
+- Bias-Variance Tradeoff
+Polynomials degrees that are less than 13 tend to have high bias (underfitting), while higher-degree polynomials greater than 13 reduce bias but increase variance (overfitting).The optimal degree which is p = 10 balances bias and variance.
+
+- Complexity of Model
+The complexity of the polynomial model increases with the degree of the polynomial. This affects interpretability and computational efficiency.
+In a polynomial regression model:
+
+$$y = a_0 + a_1 x + a_2 x^2 + \cdots + a_n x^n + \epsilon$$
+the degree *n* of the polynomial determines the model's complexity.
+
+Low-degree polynomial *n* (n is small): Simpler model, less flexible.
+
+High-degree polynomial (n is large): More complex model, highly flexible.
+
+
+# Part 4: Model Comparison and Evaluation
+
+## 1. Fit and plot the following models on the same plot with the data:
+
+• The simplest estimator ˆ f(x) that depends on x.
+
+• The optimal estimator determined by cross-validation.
+
+• An overly complex model.
+
+Use a legend to distinguish the models and comment on their behaviors.
+
+#### Model Fitting 
+
+```{r model-comparison,echo=TRUE,cache.comments=TRUE,comment = NA,warning=FALSE }
+# Fit simplest, optimal, and complex models
+simple_model <- lm(y ~ poly(x, degree = 2, raw = TRUE),data = data)
+optimal_model <- lm(y ~ poly(x, degree = 13, raw = TRUE), data = data)
+complex_model <- lm(y ~ poly(x, degree = 25, raw = TRUE), data = data)
+
+```
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+# Model Summary 
+
+summary(simple_model)
+summary(optimal_model)
+summary(complex_model)
+```
+
+
+
+```{r Model Comparison,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+
+# Now we need to compare the models 
+# Simple, Optimal and Complex Polynomial Model
+# plot for Model Comparison
+#
+ggplot(data, aes(x = x, y = y)) +
+  geom_point() +
+  stat_smooth(method = "lm", formula = y ~ poly(x,2), color = "maroon", se = FALSE) +
+  stat_smooth(method = "lm", formula = y ~ poly(x, 13), color = "green", se = FALSE) +
+  stat_smooth(method = "lm", formula = y ~ poly(x, 25), color = "red", se = FALSE) +
+  labs(title = "Model Comparison", x = "x", y = "y") +
+  scale_color_manual(values = c("maroon" = "Simple", "green" = "Optimal", "red" = "Complex"))
+```
+
+
+
+- From the above plot we can see the a polynomial of degree 10 is the best in fitting the data. This is the optimal model that can be used to model this data. The complex model is also good but not perfect compared to optimal model. Simple model does not really capture most of the points of the data thus cannot be used to predict in this case.
+
+
+## 2. Perform stochastic hold-out validation with S = 100 splits (70% training, 30% testing).
+
+Compute and plot boxplots of the test errors for:
+
+• The simplest model.
+
+• The optimal model.
+
+• The overly complex model.
+
+
+
+#### Model Comparison
+
+```{r Comparison Across Models, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA}
+
+set.seed(123) # Setting a seed for consistency 
+
+# Define a function to calculate test errors for the three model Optimal, simple and complex
+calculate_test_errors <- function(data, model_formula, train_fraction = 0.7) {
+  train_indices <- sample(1:nrow(data), size = floor(train_fraction * nrow(data)))
+  training_data <- data[train_indices, ] # Setting the training data 
+  testing_data <- data[-train_indices, ]  # Setting the test data 
+  
+  
+  # Model fit function for the training and prediction 
+  model_fit <- lm(model_formula, data = training_data) # Fitting the model on the training data 
+  predictions <- predict(model_fit, newdata = testing_data) # Testing the model on the unseen data set 
+  mean((testing_data$y - predictions)^2) 
+}
+
+# Stochastic hold-out validation for each model
+#  And also calculate the test error after fitting the model 
+#  For each model that is sipmle , Optimal and Complex Model
+#  
+simple_model_errors <- replicate(100, calculate_test_errors(data, simple_model))
+optimal_model_errors <- replicate(100, calculate_test_errors(data, optimal_model))
+complex_model_errors <- replicate(100, calculate_test_errors(data, complex_model))
+
+
+
+# For clear visualization we can using a Box plot and compare the models
+# Now let plot a Box plot for model comparison 
+# Generate a Box plot to compare test errors
+# 
+boxplot(
+  simple_model_errors, optimal_model_errors, complex_model_errors,
+  names = c("Simple", "Optimal", "Complex"),
+  main = "Test Error Comparison Across Models",
+  ylab = "Test Error (MSE)",
+  col = c("pink", "green", "red")
+)
+```
+
+
+
+#### Interpretation 
+
+- The Optimal model has the best performance, with the lowest median error and very little variation in the test errors.The Optimal model strikes the best balance between low error and consistency, while the Complex model shows signs of overfitting or instability.The Simple model performs well, but with slightly higher error and some occasional outliers.
+
+- The Complex model performs poorly, with a high median error and significant variability in performance. The outliers suggest that the model may be overfitting or is not generalizing well to unseen data.
+
+
+
+# Part 5: Further Analysis
+
+## 1. Perform an analysis of variance (ANOVA) on the test errors. What does it reveal?
+
+
+```{r anova-analysis,echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=FALSE}
+# Combine the test errors into a data frame
+test_errors_df <- data.frame(
+  errors = c(simple_model_errors, optimal_model_errors, complex_model_errors),
+  model = factor(rep(c("Simple", "Optimal", "Complex"), each = 100))
+)
+# test_errors_df
+# Perform ANOVA
+anova_result <- aov(errors ~ model, data = test_errors_df)
+#anova_result
+summary(anova_result)
+
+```
+
+
+```{r , echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=TRUE}
+tukey_results <- TukeyHSD(anova_result)
+print(tukey_results)
+
+```
+
+#### AnOVA Analysis 
+
+- Optimal model performs best, as it has significantly lower test errors than both the Complex and Simple models.
+
+-Complex model is in the middle, outperforming the Simple model but being worse than the Optimal model.
+
+- Simple model performs the worst, with significantly higher test errors than both the Optimal and Complex models.
+
+
+
+
+
+
+## 2. Obtain and plot the 95% confidence and prediction bands for the dataset Dn.
+
+#### Confidence and Prediction 
+
+This show 5 confidence and Prediction band for the dataset 
+
+```{r confidence-prediction-bands, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=TRUE}
+
+# Obtain confidence and prediction bands 
+predict_data <- data.frame(x = seq(min(data$x), max(data$x), length.out = 100))
+predictions <- predict(optimal_model, newdata = predict_data, interval = "confidence")
+predictions <- as.data.frame(predictions)
+head(predictions)
+
+```
+
+
+
+```{r Confidence and Prediction Plot, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=TRUE}
+# For Clear visualization we can plot a plot that show the the spread of the prediction along the 
+# Confidence band and Prediction Band 
+
+
+# Let start by fitting the model that is best fit the data set 
+# Optimal Model a linear model
+# Let start by the model 
+# 
+optimal_model <- lm(y ~ poly(x, degree = optimal_degree, raw = TRUE), data = data)
+
+
+# Then generate new data for predictions
+# 
+new_data <- data.frame(x = seq(min(data$x), max(data$x), length.out = 100))
+
+# To obtain confidence and prediction intervals at 95% from the new_data 
+# 
+conf_band <- predict(optimal_model, new_data, interval = "confidence", level = 0.95)
+pred_band <- predict(optimal_model, new_data, interval = "prediction", level = 0.95)
+
+
+# To plot the data and bands
+plot(data$x, data$y, main = "Confidence and Prediction Bands at 95%",
+     xlab = "x", ylab = "y", pch = 16)
+lines(new_data$x, conf_band[, 1], col = "green", lwd = 2) # Confidence band (fit line)
+lines(new_data$x, conf_band[, 2], col = "green", lty = 2) # Lower confidence limit
+lines(new_data$x, conf_band[, 3], col = "green", lty = 2) # Upper confidence limit
+lines(new_data$x, pred_band[, 2], col = "red", lty = 2) # Lower prediction limit
+lines(new_data$x, pred_band[, 3], col = "red", lty = 2) # Upper prediction limit
+legend("topright", legend = c("Data", "Fit Line", "Confidence Interval", "Prediction Interval"),
+       col = c("black", "green", "green", "red"), 
+       lty = c(NA, 1, 2, 2), 
+       pch = c(16, NA, NA, NA),
+       lwd = c(NA, 2, 2, 2))
+```
+
+
+## 3. Write the mathematical expression for:
+
+• The confidence band for a single observation (Xi, Yi).
+This give a  range of values within which the true mean of the dependent variable is expected to lie for each value of. The 95% confidence band is given by
+
+
+$$\hat{f}(x)_i \pm t_{\alpha/2,n-p-1} \cdot SE_{\hat{f(x)}_i} $$
+where
+$\hat{Y}_i$  is the predicted value for $X_i$,
+$*t*_\frac{\alpha}{2}$   is the critical value from the from a $*t*$-distribution,
+$SE_{\hat{Y}} $ is the standard error of the predicted value
+ 
+ 
+• The prediction band for a single observation (Xi, Yi).
+
+This accounts for variability of new observations around the regression line. Usually wider that the confidence band,
+
+The 95% prediction band is given by:
+
+$$\hat{f}(x)_i \pm t_{\alpha/2,n-p-1} \cdot\sqrt{SE_{\hat{f(x)}_i} +\sigma^2}$$
+where
+$\hat{Y}_i$  is the predicted value for $X_i$,
+$*t*_\frac{\alpha}{2}$   is the critical value from the from a $*t*$-distribution,
+$SE_{\hat{Y}} $ is the standard error of the predicted value
+$\sigma^2$ is the variance of the residual
+
+
+## 4. Comment extensively on what the confidence and prediction bands reveal about the
+model.
+
+- The fitted polynomial regression model effectively captures the overall trend of the data, with data points closely clustering around the fitted line, indicating a good fit. Narrow confidence and prediction bands in the central region reflect higher precision and reliability, while wider bands at the extremes suggest reduced certainty, likely due to fewer observations or extrapolation challenges.
+
+- Confidence bands quantify the uncertainty of the model's mean response, whereas the wider prediction bands also account for the variability in individual data points. Overall, predictions are more reliable in regions with narrower bands, while excessively wide prediction bands may indicate noisy data or limited predictive power.
+
+
+
+# Exercise 2: (32 points)
+
+Consider the spam dataset from library(kernlab). You are supposed to provide a thorough comparison
+of four learning machines namely LDA, QDA, Naive Bayes and FLD, and your comparison
+will be solely based on the test error.
+
+
+```{r, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=FALSE}
+library(kernlab)
+data("spam")
+head(spam)
+tail(spam)
+```
+
+
+
+## 1. Plot the distribution of the response for this dataset and comment.
+
+```{r Barplot, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=TRUE}
+# Responcse Variable 
+# 
+y <- spam[, ncol(spam)]
+#table(y)
+
+# To diplay the distribution we can use barplot 
+# 
+barplot(table(y), 
+        col = c("pink" ,"red"))
+
+```
+
+
+- From the distribution above we can see that the dataset shows a moderate imbalance, as there are more "nonspam" instances (2,788) than "spam" instances (1,813). As a result, the model will likely encounter more "nonspam" cases during training, which could lead to biased performance if not addressed appropriately.
+
+
+## 2. Comment on the shape of this dataset in terms of the sample size and the dimensionality of the input space
+
+
+```{r, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=TRUE}
+
+dimension <- dim(spam) # shape of the spam dataset 
+dimension
+
+# Dimensionality of input space (excluding the response variable)
+p <- ncol(spam) - 1
+p # Input Space 
+
+n <- nrow(spam) # Sample size 
+n 
+
+# Declare richness if n/p > 5
+richness <- ifelse(n / p > 5, "richness", "not richness")
+rich <- n/p
+rich
+
+
+cat("Richness status:", richness, "\n")
+```
+
+
+
+- This dataset has rows equal to n = 4601 and column p = 58. Because n / p is greater than 5 we can conclude that the dataset has sufficient observations relative to the number of features. This is beneficial for statistical analysis and machine learning models, reducing the risk of overfitting and improving generalization.
+
+
+- For the dimensionality of the input space is given by p-1 which is 57, the number of predictor variables (features) in the dataset, excluding the response variable.  The dataset offers sufficient dimensionality for meaningful statistical modeling and machine learning applications.
+
+
+## 3. Comment succinctly from the statistical perspective on the type of data in the input space
+
+
+- The input space of the data consists of numerical features (continuous variables) and a categorical response variable. The continuous predictors span various domains, potentially representing frequencies or proportions, as indicated by the values (e.g., make, address, all).
+
+
+- The numerical nature of the predictors suggests that they are well-suited for regression, classification, or clustering methods. The presence of a binary categorical response variable (type with levels "spam" and "nonspam") makes this dataset particularly applicable for classification tasks. Given the richness of features (57 predictors for 4601 observations).
+
+
+```{r, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include= FALSE}
+str(spam) # Structure of the data set 
+```
+
+
+## 4. Using the whole data for training and the whole data for test, building the above four learning machines, then plot the comparative ROC curves on the same grid Statistical Machine 
+
+
+```{r ROC Curves, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include =TRUE }
+ 
+# Loading required libraries
+library(MASS)       
+library(e1071)      
+library(mda)       
+library(pROC)        
+
+
+# Building and plotting ROC curves for the four learning machines.
+# we are using the entire dataset for both training and testing
+train_data <- spam
+test_data <- spam
+
+# Build the models
+# LDA , QDL ,Naive  and FLD
+# Using the training data 
+
+lda_model <- lda(type ~ ., data = train_data) # Linear Discriminant Analysis for train data 
+qda_model <- qda(type ~ ., data = train_data)  # Quadratic Discriminant Analysis for the train data 
+nb_model <- naiveBayes(type ~ ., data = train_data) # Naive Bayes Analysis for the train data set 
+fld_model <- fda(type ~ ., data = train_data) # Fisher's Linear Discriminant 
+
+
+# Similarly we can predict for the four model above 
+# Predict probabilities for the test set
+lda_probs <- predict(lda_model, newdata = test_data)$posterior[, "spam"] 
+qda_probs <- predict(qda_model, newdata = test_data)$posterior[, "spam"]  
+nb_probs <- predict(nb_model, newdata = test_data, type = "raw")[, "spam"] 
+fld_probs <- predict(fld_model, newdata = test_data, type = "posterior")[, "spam"]
+
+
+# Now let calculate ROC curves - (Receiver Operating Characteristic)
+# We calculate the ROC for all the model 
+# Lda, QDA, Naive and FLD 
+# 
+lda_roc <- roc(test_data$type, lda_probs, levels = c("nonspam", "spam"), direction = "<")
+qda_roc <- roc(test_data$type, qda_probs, levels = c("nonspam", "spam"), direction = "<")
+nb_roc <- roc(test_data$type, nb_probs, levels = c("nonspam", "spam"), direction = "<")
+fld_roc <- roc(test_data$type, fld_probs, levels = c("nonspam", "spam"), direction = "<")
+
+#
+# For clear visualization we need to plot the Roc curves 
+#  We plot these curves in the same plat for easier comparison between the model
+#  Plot ROC curves
+# We start with plotting LDA abd add line of the other models 
+# 
+plot(lda_roc, col = "red", main = "ROC Curves for Spam Dataset", xlab = "False Positive Rate", ylab = "True Positive Rate", lwd = 5,, lty= 2)
+lines(qda_roc, col = "pink", lwd = 2)
+lines(nb_roc, col = "green", lwd = 2)
+lines(fld_roc, col = "purple", lwd = 2)
+legend("bottomright", legend = c("LDA", "QDA", "Naive Bayes", "FLD"), col = c("red", "pink", "green", "purple"), lty = 1, lwd = 2)
+
+```
+
+
+
+```{r,echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include =TRUE }
+cat("LDA AUC:", auc(lda_roc), "\n")
+cat("QDA AUC:", auc(qda_roc), "\n")
+cat("Naive Bayes AUC:", auc(nb_roc), "\n")
+cat("FLD AUC:", auc(fld_roc), "\n")
+
+```
+
+
+## 5. Comment succinctly on what the ROC curves reveal for this data and argue in light of the theory whether or not that was to be expected.
+
+
+- LDA: Linear Discriminant Analysis
+A classification method that assumes linear decision boundaries between classes by modeling each class with a multivariate Gaussian distribution with the same covariance matrix.
+
+- QDA: Quadratic Discriminant Analysis
+Similar to LDA, but it assumes that each class has its own covariance matrix, allowing for quadratic decision boundaries.
+
+- FLD: Fisher's Linear Discriminant
+A dimensionality reduction technique that projects data onto a lower-dimensional space while maximizing class separability.
+
+- Naive: Naive Bayes Classifier
+A probabilistic classifier based on Bayes' theorem that assumes all features are conditionally independent given the class label
+
+- The ROC curve shows the performance of four classifiers: LDA, QDA, Naive Bayes, and FLD. The closer a curve is to the top-left corner, the better the model distinguishes between classes, while the diagonal line represents a random classifier. 
+
+- All classifiers perform well, with LDA and FLD  having similar strong performances while as QDA, and Naive Bayes seem to be the less. All classifiers have high AUC values all greater that 0.8, with FLD and LDA with the Higher AUC values generally indicate better classifier performance.In conclusion we can see that LDA and FLD that is Linear Discriminant Analysis and Fisher's Linear Discriminant ties in performance.
+
+
+
+## 6. Using set.seed(19671210) along with a 2/3 training 1/3 test in the context stratified stochastic holdout split of the data, compute S = 50 replications of the test error for all the above learning machines.
+
+
+```{r, echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include =FALSE}
+
+# Load necessary libraries
+library(caret)
+library(MASS)
+library(e1071)
+library(mda)
+
+
+# This will be by removing the near - zero predictor if present 
+# Function to data preprocessing function using an indicator 
+# 
+preprocess_data <- function(data) {
+  # Identify predictors with near-zero variance
+  nzv <- nearZeroVar(data[, -which(names(data) == "type")])
+  
+  # Remove near-zero variance predictors if present
+  if (length(nzv) > 0) {
+    data <- data[, -nzv]
+  }
+  return(data)
+}
+
+# After removing the near zero element we can 
+# Apply preprocessing to the dataset
+spam_processed <- preprocess_data(spam)
+
+
+# Set random seed for reproducibility
+set.seed(19671210)
+
+# Number of iterations for evaluation
+num_iterations <- 50
+
+# Initialize a matrix to store test error rates
+test_errors <- matrix(NA, nrow = num_iterations, ncol = 4)
+colnames(test_errors) <- c("LDA", "QDA", "Naive Bayes", "FDA")
+
+# Perform stratified random sampling and model evaluation
+for (iteration in 1:num_iterations) {
+  tryCatch({
+    # Stratified train-test split
+    train_index <- createDataPartition(spam_processed$type, p = 2/3, list = FALSE)
+    train_data <- spam_processed[train_index, ]
+    test_data <- spam_processed[-train_index, ]
+    
+    # Standardize training and testing data
+    preprocessing <- preProcess(train_data[, -which(names(train_data) == "type")], method = c("center", "scale"))
+    train_data <- predict(preprocessing, train_data)
+    test_data <- predict(preprocessing, test_data)
+    
+    # Ensure factor levels are consistent between train and test sets
+    train_data$type <- factor(train_data$type, levels = levels(spam_processed$type))
+    test_data$type <- factor(test_data$type, levels = levels(spam_processed$type))
+    
+    # Print dataset dimensions for debugging
+    cat("Iteration", iteration, ": Training set size -", dim(train_data), "\n")
+    cat("Iteration", iteration, ": Testing set size -", dim(test_data), "\n")
+    
+    # Train models on the training set
+    lda_model <- lda(type ~ ., data = train_data)
+    qda_model <- qda(type ~ ., data = train_data)
+    nb_model <- naiveBayes(type ~ ., data = train_data)
+    fda_model <- fda(type ~ ., data = train_data)
+    
+    # Predict outcomes on the test set
+    lda_predictions <- predict(lda_model, newdata = test_data)$class
+    qda_predictions <- predict(qda_model, newdata = test_data)$class
+    nb_predictions <- predict(nb_model, newdata = test_data, type = "class")
+    fda_predictions <- predict(fda_model, newdata = test_data, type = "class")
+    
+    # Compute error rates
+    test_errors[iteration, 1] <- mean(lda_predictions != test_data$type)
+    test_errors[iteration, 2] <- mean(qda_predictions != test_data$type)
+    test_errors[iteration, 3] <- mean(nb_predictions != test_data$type)
+    test_errors[iteration, 4] <- mean(fda_predictions != test_data$type)
+  }, error = function(e) {
+    message("Error during iteration ", iteration, ": ", e$message)
+  })
+}
+
+# Compute average and standard deviation of errors for each model
+mean_errors <- colMeans(test_errors, na.rm = TRUE)
+sd_errors <- apply(test_errors, 2, sd, na.rm = TRUE)
+
+# Display results
+results <- data.frame(
+  Method = colnames(test_errors),
+  Mean_Error = mean_errors,
+  SD_Error = sd_errors
+)
+print(results)
+
+```
+
+
+
+## 7. Plot the comparative boxplots (be sure to properly label the plots)
+
+
+```{r Boxplot Discriminant,echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include =TRUE }
+
+# Plot comparative boxplots
+boxplot(test_errors, 
+        names = colnames(test_errors), 
+        main = "Distribution for Different Models", 
+        ylab = "Test Error Rate", 
+        col = c("pink", "red", "green", "purple"))
+```
+
+
+## 8. Comment on the distribution of the test error in light of (implicit) model complexity
+
+
+The boxplot compares the test error rates of four models (LDA, QDA, Naive Bayes, and FDA) in terms of model complexity:
+
+- QDA: Consistently high error rates indicate underfitting due to their rigidity and inability to capture complex structures.
+
+- Naive Bayes: Lower error rates with a tighter distribution suggest better suitability, likely due to the dataset aligning with its assumptions.
+
+- LDA and FLD: Lowest error rates and tight distribution highlight its superior performance, leveraging its flexibility to capture complex patterns effectively.
+- Conclusion: Increasing model complexity (from LDA/QDA to Naive Bayes and FDA) improves performance, with FDA offering the best balance without overfitting

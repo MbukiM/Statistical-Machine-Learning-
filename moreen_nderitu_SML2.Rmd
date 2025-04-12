@@ -1,0 +1,1311 @@
+---
+title: "Statistical Machine Learning Assignment 1 SML1"
+author: "Moreen Mbuki"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Exercise 1: Practical SML on DNA Microarrays (60 points)
+Consider the prostate cancer dataset containing the DNA MicroArray Gene Expression of both
+cancer and non cancer subjects.
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE,include=FALSE}
+setwd("C:/Users/Administrator/Desktop/AIMS/AIMS Review Phase/Statistical Machine Learning/Assignment")
+```
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE,include=FALSE}
+library(class)
+library(rpart)
+library(rpart.plot)
+library(ROCR)
+```
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE,include=FALSE}
+prostatedata <- read.csv("prostate-cancer-1 - Copy.csv") # DNA MicroArray Gene Expression
+prostatedata
+```
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE,include=FALSE}
+head(prostatedata)
+tail(prostatedata)
+head(str(prostatedata))
+dim(prostatedata)
+
+```
+
+You are supposed to provide a thorough comparison of six learning machines on this dataset,
+namely 1NN, 7NN, 9NN, Trees (cp=0), Trees (cp=0.05), and Trees (cp=0.1), and your comparison
+will be solely based on the test error.
+
+<!-- #```{r ,Kruskal-Wallis Test Statistics Plot ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE} -->
+<!-- prostatedata$Y <- as.factor(prostatedata$Y) -->
+<!-- tree.xy1 <- rpart(Y~., data=prostatedata, control = rpart.control(cp = 0)) -->
+<!-- rpart.plot(tree.xy1) -->
+#```
+
+
+## 1. Comment on the shape of this dataset in terms of the sample size and the dimensionality of the input space
+
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+#calling the data 
+#data(prostate)
+dimen <- dim(prostatedata)
+dimen
+#dimensionality 
+p_prostate<- ncol(prostatedata)-1
+p_prostate
+```
+## 2. Comment succinctly from the statistical perspective on the type of data in the input space
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+#homegeinty
+#str(prostate)
+#sample size
+n_prostate<- nrow(prostatedata)
+n_prostate
+hom_check<- sapply(prostatedata[,-1], class)
+table(hom_check)
+
+```
+All the variables are of type numeric and have a similar scale, there are all continuous. Hence, we can conclude that they are type homogeneous and scale homogeneous
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+k_prostate <- n_prostate/p_prostate
+k_prostate
+```
+
+The kappa obtained the prostate data set is less than 5, and hence the number of observations are significantly less than the variables.
+
+
+
+## 3. Plot the distribution of the response for this dataset and comment.
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+table(prostatedata$Y)
+```
+
+```{r ,Response Variable Distribution Plot ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+y <- prostatedata$Y
+plot(y, 
+     xlab= " Y Levels ",
+     ylab = "Freqency",
+     main = "Response Variable Distribution")
+
+
+```
+
+- This is Bernoulli distribution indicating that the response variable is a binary outcome with two levels( "1" vs. "0"). This distribution is used in classification problems, particularly when dealing with binary classification datasets.
+- From the distribution above we can see that the dataset shows a balance distribution between level 1 with a totally of $42$ and level 0 has a total of $37$. As a result, the model will be suitable for classification task since it appropriately posed.
+
+
+## 4. Identify the 9 individually most powerful predictor variables with respect to the response according the Kruskal-Wallis test statistic.
+
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+# Predictor variable 
+y <- prostatedata$Y
+x <- prostatedata[, !colnames(prostatedata) %in% "Y"]
+head(x,3)
+```
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+
+# Define the response variable 
+# Predictor variable 
+# Predictor variable 
+y <- prostatedata$Y
+x <- prostatedata[, !colnames(prostatedata) %in% "Y"]
+
+# Initialize an empty vector to store test statistics
+kruskal_wallis <- numeric()
+
+# Loop through each predictor variable
+for (x in colnames(prostatedata)[colnames(prostatedata) != "Y"]) {
+  # Perform Kruskal-Wallis test
+  test <- kruskal.test(prostatedata[[x]] ~ prostatedata$Y)
+  # Store the test statistic
+  kruskal_wallis[x] <- test$statistic
+}
+
+# Sort variables by test statistic in descending order
+sorted_predictors <- sort(kruskal_wallis, decreasing = TRUE)
+
+# Select the top 9 predictors
+top_9_predictors <- names(sorted_predictors)[1:9]
+
+# Output the results
+print("Top 9 predictor variables based on Kruskal-Wallis test:")
+print(top_9_predictors)
+
+```
+
+
+- The follow are are the top predictor for the data set from the kruskal -Wallis test. Kruskal Wallis is used to test if at least one group median is different from the others when the data is not normally distributed or the assumptions of ANOVA (e.g., normality, homogeneity of variance) are not met. 
+- Since the data set is non-parametric Kruskal Wallis is the best test for the significant of variables.
+
+##5. Generate a type=’h’ plot with the Kruskal-Wallis test statistic as the y-axis and the variable name as the x-axis
+
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+testvalue <- c(14.90820 , 12.64903, 12.50965, 12.23320 ,  12.16458, 12.02790,11.48890 ,11.02741 ,10.57539)
+name <- c("X217844_at" ,  "X211935_at" ,  "X212640_at" ,  "X201290_at"  ,"X215333_x_at", "X201480_s_at", "X209454_s_at" ,"X200047_s_at","X214001_x_at")
+kruskal_data <- data.frame(Variable = name, TestStatistic = testvalue)
+```
+
+```{r ,Kruskal-Wallis Test Statistics Plot ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+
+# Create a dataframe for the top_9_variable 
+# Test values 
+testvalue <- c(14.90820 , 12.64903, 12.50965, 12.23320 ,  12.16458, 12.02790,11.48890 ,11.02741 ,10.57539)
+# Variables names 
+name <- c("X217844_at" ,  "X211935_at" ,  "X212640_at" ,  "X201290_at"  ,"X215333_x_at", "X201480_s_at", "X209454_s_at" ,"X200047_s_at","X214001_x_at")
+
+# Dataframe 
+kruskal_data <- data.frame(Variable = name, TestStatistic = testvalue)
+
+# # Plot
+# barplot(kruskal_data$TestStatistic, names.arg = kruskal_data$Variable, las = 2, horiz = TRUE, 
+#         main = "Kruskal-Wallis Test Statistics", xlab = "Test Statistic", ylab = "Variable", col = "pink")
+
+barplot(sort(kruskal_wallis[top_9_predictors], decreasing = TRUE), names.arg =colnames(kruskal_wallis[top_9_predictors]), las = 2,
+        ylab = "Test Values",  col = "pink",
+        main = "Kruskal-Wallis Test Statistics", cex.names = 0.5)
+```
+
+- The plot above show the predictors variable with highest test statistics are more strongly associated with the response variable. $"X217844_at"$ is highly associated with the response variable with Kruskal Wallis test statistics of $14.90820$. 
+
+
+## 6. Generate the comparative boxplots of the 9 most powerful variable with respect to the response and comment on what you observe.
+
+```{r, Comparative boxplots for Top_9_Predictors,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+
+boxplot(prostatedata[, top_9_predictors], 
+        las =2,
+        main = "Comparative boxplots for Top_9_Predictors" )
+```
+- From the comparative boxplot we can clearly that variable $"X201290_at"$ is the best in group the data set when taken alone. However, this contradict the Kruskal Wallis test result because according to  the test the variable that indicates a higher association with the response variable is $"X217844_at"$.
+
+##7. Build the classification tree with cp=0.01
+• Plot the tree you just built
+
+
+```{r Decison Tree, echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+Y <- as.factor(prostatedata$Y)
+tree.xy <- rpart(Y~ ., data=prostatedata, control = rpart.control(cp = 0.01))
+rpart.plot(tree.xy)
+```
+
+• Determine the number of terminal nodes
+
+There are $4$ terminal nodes from the tree this implies $4$ Regions.
+
+• Write down in mathematical form region 2 and Region 4.
+$$ 
+Region_2 = 
+\begin{cases} 
+x \in \mathbb{R}^P \text{ such that } \quad \text{X201290\_at} \ge 1.1 \quad \text{and} \quad \text{X214008\_at} < -0.29
+\end{cases}
+$$
+
+Similarly, region 4 will be:
+
+$$ 
+Region_4 = 
+\begin{cases} 
+x \in \mathbb{R}^P \text{ such that } \quad \text{X201290\_at} \le 1.1 \quad \text{and} \quad \text{X20948\_s\_at} \ge -0.063 
+\end{cases}
+$$
+
+
+
+• Comment on the variable at the root of the tree in light of the Kruskal-Wallis statistic
+
+- Kruskal Walliis test statistic claims that the variable that indicates a higher association with the response variable is $"X217844_at"$. However, the tree indicates otherwise, with agrees with the comparative boxplot that is used to compare the variables.
+
+-Kruskal-Wallis Test:More sensitive to small differences in ranks and medians across groups.While as comparative boxplots highlight broader patterns and variability. Overlapping boxplots might visually suggest little or no difference even when small differences exist statistically.
+
+- The algorithm evaluates how well a variable divides the data into homogeneous groups rather than its overall statistical significance.
+Boxplots often highlight differences in the range or spread of groups, which the tree might consider more useful for creating splits.
+
+-Boxplots highlight group separability, which is what decision trees are designed to exploit.Kruskal-Wallis is concerned with global statistical significance, which might not always translate into effective splits. This is the main reason why Decison tree align with the comparative boxplot. However there are better techniques that can be used to determine the best variable for tree. 
+
+Decision trees rely on statistical methods that measure how well a variable splits the data. These include:
+
+- Gini Impurity: Measures the likelihood of incorrect classification if a random sample is classified according to the distribution of labels in the node.
+
+- Entropy (Information Gain): Measures the reduction in uncertainty about the target variable after splitting.
+
+- Mean Squared Error (MSE): For regression trees, measures how well the split minimizes variance in the target variable.
+
+## 8. Generate the comparative boxplots of the 9 weakest variable with respect to the response and comment on what you observe.
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+length(kruskal_wallis)
+```
+
+
+```{r ,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+# Sort variables by test statistic in descending order
+sorted_predictors <- sort(kruskal_wallis, decreasing = TRUE)
+
+# Select the top 9 predictors
+last_9_predictors <- names(sorted_predictors)[491:500]
+
+# loading 
+last_9_predictors
+
+# Get the values
+kruskal_wallis[last_9_predictors]
+```
+
+
+```{r ,Comparative boxplots for Last_9_Predictors,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+
+boxplot(prostatedata[, last_9_predictors], 
+        las =2,
+        main = "Comparative boxplots for Last_9_Predictors" )
+```
+
+- This boxplot display that $"X202089\_s\_at"$ despite being with the lowest kruskal Wallis statistical score. When used alone it can group  the data into two
+
+
+## 9. Generate the correlation plot of the predictor variables and comment extensively one what they reveal, if anything.
+
+```{r, Correplot,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+library(corrplot)
+corrmatrix <- cor(prostatedata[last_9_predictors])
+corrplot::corrplot(corrmatrix)
+```
+
+```{r corr,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+library(corrplot)
+corrmatrix <- cor(prostatedata[top_9_predictors])
+corrplot::corrplot(corrmatrix)
+```
+
+## 10. Compute the eigendecomposition of the correlation matrix and comment on the ratio λmax/λmin.
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+# Eigendecomposition
+# 
+x <- prostatedata[, !colnames(prostatedata) %in% "Y"]
+cormatrix <- cor(x)
+#colnames(prostatedata)[colnames(prostatedata) != "Y"])
+eigen_decomp <- eigen(cormatrix)
+
+# Compute the ratio λmax/λmin
+lambda_max <- max(eigen_decomp$values)
+lambda_min <- min(eigen_decomp$values)
+ratio <- lambda_max / lambda_min
+
+cat("Eigenvalues:", head((eigen_decomp$values)), "\n")
+cat("Ratio λmax/λmin:", ratio, "\n")
+```
+
+
+- The extremely large and negative ratio suggests severe multicollinearity, which could compromise the validity and stability of the data. The dataset might benefit from dimensionality reduction techniques like PCA.
+ 
+
+##11. Using the whole data for training and the whole data for test, building the above six learning machines, then plot the comparative ROC curves on the same grid
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+xtrain <- prostatedata$x
+   ytrain <- prostatedata$Y
+   ytrain <- as.factor(ytrain)
+   
+xtrain
+ytrain
+```
+
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+# Loading the requred packages 
+   library(class)
+   library(MASS)
+
+# Declaring the variables 
+   Y <- prostatedata$Y
+   x <- prostatedata[, !colnames(prostatedata) %in% "Y"]
+   
+# Declaring the train variables 
+   xtrain <- x
+   ytrain <- prostatedata$Y
+   ytrain <- as.factor(ytrain)
+   
+   
+# size of the data    
+   p   <- ncol(xtrain)
+
+   
+# Deckaring the test variables    
+   xtest <- x
+   ytest <- prostatedata$Y
+   ytest <- as.factor(ytest)
+
+
+# Creating the knn models for the data set 1NN , 7NN and 9NN  
+# INN Model
+  yhat_1NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 1)
+
+# 7NN Model  
+  yhat_7NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 7)
+
+# 9NN Model  
+  yhat_9NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 9)
+
+  
+# Creating decision tress for the data set 
+# 
+# Decision tree with cp = 0 
+  tree_cp0 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control =     rpart.control(cp = 0))
+  yhat_tree_cp0 <- predict(tree_cp0, xtest, type = "class")
+  
+# Decision tree with cp = 05 
+  tree_cp05 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.05))
+yhat_tree_cp05 <- predict(tree_cp05, xtest, type = "class")
+
+# Decison tree cp = 0.1 
+tree_cp1 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.1))
+yhat_tree_cp1 <- predict(tree_cp1, xtest, type = "class")
+
+
+```
+
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE, message = FALSE}
+
+library(rpart)     # For Decision Trees
+library(pROC)      # For ROC Curves
+
+
+# Ensure KNN predictions include probabilities
+yhat_1NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 1, prob = TRUE)
+yhat_7NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 7, prob = TRUE)
+yhat_9NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 9, prob = TRUE)
+
+# Extract probabilities for KNN models
+prob_1NN <- ifelse(yhat_1NN == "1", attr(yhat_1NN, "prob"), 1 - attr(yhat_1NN, "prob"))
+prob_7NN <- ifelse(yhat_7NN == "1", attr(yhat_7NN, "prob"), 1 - attr(yhat_7NN, "prob"))
+prob_9NN <- ifelse(yhat_9NN == "1", attr(yhat_9NN, "prob"), 1 - attr(yhat_9NN, "prob"))
+
+# Extract probabilities for KNN models
+prob_1NN <- ifelse(yhat_1NN == "1", attr(yhat_1NN, "prob"), 1 - attr(yhat_1NN, "prob"))
+prob_7NN <- ifelse(yhat_7NN == "1", attr(yhat_7NN, "prob"), 1 - attr(yhat_7NN, "prob"))
+prob_9NN <- ifelse(yhat_9NN == "1", attr(yhat_9NN, "prob"), 1 - attr(yhat_9NN, "prob"))
+
+# Extract probabilities for decision tree models
+prob_tree_cp0 <- predict(tree_cp0, xtest, type = "prob")[,2]
+prob_tree_cp05 <- predict(tree_cp05, xtest, type = "prob")[,2]
+prob_tree_cp1 <- predict(tree_cp1, xtest, type = "prob")[,2]
+
+# Compute ROC curves
+roc_1NN <- roc(ytest, prob_1NN, levels = c("0", "1"))
+roc_7NN <- roc(ytest, prob_7NN, levels = c("0", "1"))
+roc_9NN <- roc(ytest, prob_9NN, levels = c("0", "1"))
+roc_tree_cp0 <- roc(ytest, prob_tree_cp0, levels = c("0", "1"))
+roc_tree_cp05 <- roc(ytest, prob_tree_cp05, levels = c("0", "1"))
+roc_tree_cp1 <- roc(ytest, prob_tree_cp1, levels = c("0", "1"))
+
+# Plot ROC curves
+plot(roc_1NN, col = "red", main = "ROC Curves for KNN and Decision Tree Models", lwd = 2)
+lines(roc_7NN, col = "pink", lwd = 2)
+lines(roc_9NN, col = "yellow", lwd = 2)
+lines(roc_tree_cp0, col = "orange", lwd = 2)
+lines(roc_tree_cp05, col = "violet", lwd = 2)
+lines(roc_tree_cp1, col = "maroon", lwd = 2)
+
+# Add legend
+legend("bottomright", 
+       legend = c("1NN", "7NN", "9NN", "Tree (cp=0)", "Tree (cp=0.05)", "Tree (cp=0.1)"), 
+       col = c("red", "pink", "yellow", "orange", "violet", "maroon"), 
+       lwd = 2, cex = 0.6)
+
+```
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+yhat_1NN
+is.numeric(yhat_1NN)
+```
+
+
+
+
+## 12. Plot all the three classification tree grown, using the prp function for the package rpart.plot
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+par(mfrow =c(1,3))
+
+tree_cp0 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control =     rpart.control(cp = 0))
+  yhat_tree_cp0 <- predict(tree_cp0, xtest, type = "class")
+  
+rpart.plot(tree_cp0)
+
+tree_cp1 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.1))
+yhat_tree_cp1 <- predict(tree_cp1, xtest, type = "class")
+rpart.plot(tree_cp1)
+
+
+tree_cp1 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.1))
+yhat_tree_cp1 <- predict(tree_cp1, xtest, type = "class")
+rpart.plot(tree_cp1)
+
+```
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+tree_cp05 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.05))
+yhat_tree_cp05 <- predict(tree_cp05, xtest, type = "class")
+rpart.plot(tree_cp05)
+```
+
+
+```{r,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+tree_cp1 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.1))
+yhat_tree_cp1 <- predict(tree_cp1, xtest, type = "class")
+rpart.plot(tree_cp1)
+```
+
+
+## 13. Comment succinctly on what the ROC curves reveal for this data and argue in light ofthe theory whether or not that was to be expected.
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE, message = FALSE}
+
+library(rpart)     # For Decision Trees
+library(pROC)      # For ROC Curves
+
+
+# Ensure KNN predictions include probabilities
+yhat_1NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 1, prob = TRUE)
+yhat_7NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 7, prob = TRUE)
+yhat_9NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 9, prob = TRUE)
+
+# Extract probabilities for KNN models
+prob_1NN <- ifelse(yhat_1NN == "1", attr(yhat_1NN, "prob"), 1 - attr(yhat_1NN, "prob"))
+prob_7NN <- ifelse(yhat_7NN == "1", attr(yhat_7NN, "prob"), 1 - attr(yhat_7NN, "prob"))
+prob_9NN <- ifelse(yhat_9NN == "1", attr(yhat_9NN, "prob"), 1 - attr(yhat_9NN, "prob"))
+
+# Extract probabilities for KNN models
+prob_1NN <- ifelse(yhat_1NN == "1", attr(yhat_1NN, "prob"), 1 - attr(yhat_1NN, "prob"))
+prob_7NN <- ifelse(yhat_7NN == "1", attr(yhat_7NN, "prob"), 1 - attr(yhat_7NN, "prob"))
+prob_9NN <- ifelse(yhat_9NN == "1", attr(yhat_9NN, "prob"), 1 - attr(yhat_9NN, "prob"))
+
+# Extract probabilities for decision tree models
+prob_tree_cp0 <- predict(tree_cp0, xtest, type = "prob")[,2]
+prob_tree_cp05 <- predict(tree_cp05, xtest, type = "prob")[,2]
+prob_tree_cp1 <- predict(tree_cp1, xtest, type = "prob")[,2]
+
+# Compute ROC curves
+roc_1NN <- roc(ytest, prob_1NN, levels = c("0", "1"))
+roc_7NN <- roc(ytest, prob_7NN, levels = c("0", "1"))
+roc_9NN <- roc(ytest, prob_9NN, levels = c("0", "1"))
+roc_tree_cp0 <- roc(ytest, prob_tree_cp0, levels = c("0", "1"))
+roc_tree_cp05 <- roc(ytest, prob_tree_cp05, levels = c("0", "1"))
+roc_tree_cp1 <- roc(ytest, prob_tree_cp1, levels = c("0", "1"))
+
+# Plot ROC curves
+plot(roc_1NN, col = "red", main = "ROC Curves for KNN and Decision Tree Models", lwd = 2)
+lines(roc_7NN, col = "pink", lwd = 2)
+lines(roc_9NN, col = "yellow", lwd = 2)
+lines(roc_tree_cp0, col = "orange", lwd = 2)
+lines(roc_tree_cp05, col = "violet", lwd = 2)
+lines(roc_tree_cp1, col = "maroon", lwd = 2)
+
+# Add legend
+legend("bottomright", 
+       legend = c("1NN", "7NN", "9NN", "Tree (cp=0)", "Tree (cp=0.05)", "Tree (cp=0.1)"), 
+       col = c("red", "pink", "yellow", "orange", "violet", "maroon"), 
+       lwd = 2, cex = 0.6)
+
+```
+
+```{r,echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include =TRUE }
+cat("1NN AUC:", auc(roc_1NN), "\n")
+cat("7NN AUC:" , auc(roc_7NN), "\n")
+cat("9NN AUC:", auc(roc_9NN), "\n")
+cat("Tree - cp0:", auc(roc_tree_cp0), "\n")
+cat("Tree - cp1:", auc(roc_tree_cp1), "\n")
+cat("Tree - cp05:", auc(roc_tree_cp05), "\n")
+```
+- ROC (Receiver Operating Characteristic) Curve: It is a graphical representation of the performance of a binary classification model at various thresholds. The curve plots the True Positive Rate (TPR) against the False Positive Rate (FPR).
+
+- AUC (Area Under the Curve): A key metric derived from the ROC curve, which provides an overall measure of the model's ability to discriminate between classes. A higher AUC indicates better performance.
+
+
+- The ROC curves displays how well a model can distinguish between 1 and 0 classes as the threshold varies. 1NN model has a AUC = 1 this implies that the model has excellent discriminative power, meaning it is able to correctly classify most of the positive instances while minimizing false positives.However, this model is prompt to overfitting the data.
+
+- All the models has an AUC that is greater than 0.5, the models are  performing better than random guessing.Expected Behavior Based on the Model Complexity:
+
+- In KNN models the smaller the K the higher complexity of the model,in the case we see that when K = 1 the model has a higher AUC =1, as the k grow larger the complexity of the model reduces.
+ 
+ . K = 1 , AUC = 1.00
+ . K = 7 , AUC = 0.7776705 
+ . K = 9 , AUC = 0.786036
+ 
+ 
+###  Interpretation in Light of the Theory:
+
+- Given the diverse models used (KNN models with different k values, and decision trees with different complexity parameters), we would expect:
+The KNN models with larger k values (7NN and 9NN) should have better performance compared to the 1NN model due to increased smoothing and reduced overfitting.
+
+
+- The decision tree models with lower complexity parameters (cp = 0 and cp = 0.05) are expected to under perform due to overfitting, while the model with a moderate cp (cp = 0.1) may strike a better balance between bias and variance.
+
+ . Tree with cp = 0.1 , AUC = 0.8963964
+ . Tree with cp = 0.05 , AUC =  0.8552124 
+ . Tree with cp =  0 , AUC = 0.8552124
+ 
+- If the AUC values are consistent with these expectations, it suggests that the models are behaving in line with their theoretical complexity.
+
+### Conclusion:
+
+- A higher AUC from models with greater complexity suggests better predictive power, while lower AUC from simpler models indicates poorer performance. However, the best model or optimal is the model that strike a balance between variance and bias. Because high complexity of the model leads to overfitting of the model and for the lower complexity result to underfitting.
+
+## 14. Using set.seed(19671210) along with a 7/10 training 3/10 test basic stochastic holdout split of the data, compute S = 100 replicated random splits of the test error for all the above learning machines.
+
+## • Plot the comparative boxplots (be sure to properly label the plots)
+
+
+
+## • Comment on the distribution of the test error in light of (implicit) model complexity.
+
+
+## • Perform a basic analysis of variance (ANOVA) on those test errors and comment!
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+   
+   stratified.holdout <- function(y, ptr)
+   {
+     n              <- length(y)
+     labels         <- unique(y)       # Obtain classifiers
+     id.tr          <- id.te <- NULL
+     # Loop once for each unique label value
+  
+     y <- sample(sample(sample(y)))
+  
+     for(j in 1:length(labels)) 
+     {
+      sj    <- which(y==labels[j])  # Grab all rows of label type j  
+      nj    <- length(sj)           # Count of label j rows to calc proportion below
+    
+      id.tr <- c(id.tr, (sample(sample(sample(sj))))[1:round(nj*ptr)])
+  }                               # Concatenates each label type together 1 by 1
+  
+  id.te  <- (1:n) [-id.tr]          # Obtain and Shuffle test indices to randomize                                
+  
+  return(list(idx1=id.tr,idx2=id.te)) 
+}  
+```
+
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=FALSE}
+
+   set.seed(19671210)
+
+   library(class)
+   library(MASS)
+
+   Y <- prostatedata$Y
+   x <- prostatedata[, !colnames(prostatedata) %in% "Y"]
+   xtrain <- x
+   ytrain <- prostatedata$Y
+   ytrain <- as.factor(ytrain)
+   
+   
+   hold  <- stratified.holdout(ytrain, 0.7) 
+   id.tr <- hold$idx1
+   ntr   <- length(id.tr)
+   
+   p   <- ncol(xtrain)
+
+   xtest <- x
+   ytest <- prostatedata$Y
+   ytest <- as.factor(ytest)
+
+    hold  <- stratified.holdout(ytest, 0.3)
+   id.te <- hold$idx1
+   nte   <- length(id.te)
+
+
+   xtr <- xtrain[id.tr,]
+   ytr <- ytrain[id.tr]
+   xte <- xtest[id.te,]
+   yte <- ytest[id.te]
+
+   
+   
+  yhat_1NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 1)
+  
+  yhat_7NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 7)
+  
+  yhat_9NN <- knn(train = xtrain, test = xtest, cl = ytrain, k = 9)
+  
+  tree_cp0 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control =     rpart.control(cp = 0))
+  yhat_tree_cp0 <- predict(tree_cp0, xtest, type = "class")
+  
+  
+  tree_cp05 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.05))
+yhat_tree_cp05 <- predict(tree_cp05, xtest, type = "class")
+
+
+tree_cp1 <- rpart(ytrain ~ ., data = cbind(ytrain, xtrain), control = rpart.control(cp = 0.1))
+yhat_tree_cp1 <- predict(tree_cp1, xtest, type = "class")
+
+
+```
+
+
+
+```{R,echo=FALSE,cache.comments=TRUE,comment = NA,warning=FALSE, include=TRUE}
+
+# Load necessary libraries
+library(caret)
+library(class)
+library(rpart)
+library(ggplot2)
+
+# Initialize parameters
+set.seed(19671210)
+num_splits <- 100
+test_errors <- matrix(NA, nrow = num_splits, ncol = 6)
+colnames(test_errors) <- c("1NN", "7NN", "9NN", "Tree (cp=0)", "Tree (cp=0.05)", "Tree (cp=0.1)")
+
+# Loop for S = 100 replicated random splits
+for (i in 1:num_splits) {
+  # Stratified train-test split
+  train_index <- createDataPartition(ytrain, p = 0.7, list = FALSE)
+  xtrain_split <- xtrain[train_index, ]
+  ytrain_split <- ytrain[train_index]
+  xtest_split <- xtrain[-train_index, ]
+  ytest_split <- ytrain[-train_index]
+  
+  # Train KNN models
+  yhat_1NN <- knn(train = xtrain_split, test = xtest_split, cl = ytrain_split, k = 1)
+  yhat_7NN <- knn(train = xtrain_split, test = xtest_split, cl = ytrain_split, k = 7)
+  yhat_9NN <- knn(train = xtrain_split, test = xtest_split, cl = ytrain_split, k = 9)
+  
+  # Train decision tree models
+  tree_cp0 <- rpart(ytrain_split ~ ., data = data.frame(ytrain_split, xtrain_split), control = rpart.control(cp = 0))
+  yhat_tree_cp0 <- predict(tree_cp0, xtest_split, type = "class")
+  
+  tree_cp05 <- rpart(ytrain_split ~ ., data = data.frame(ytrain_split, xtrain_split), control = rpart.control(cp = 0.05))
+  yhat_tree_cp05 <- predict(tree_cp05, xtest_split, type = "class")
+  
+  tree_cp1 <- rpart(ytrain_split ~ ., data = data.frame(ytrain_split, xtrain_split), control = rpart.control(cp = 0.1))
+  yhat_tree_cp1 <- predict(tree_cp1, xtest_split, type = "class")
+  
+  # Compute test errors
+  test_errors[i, 1] <- mean(yhat_1NN != ytest_split)
+  test_errors[i, 2] <- mean(yhat_7NN != ytest_split)
+  test_errors[i, 3] <- mean(yhat_9NN != ytest_split)
+  test_errors[i, 4] <- mean(yhat_tree_cp0 != ytest_split)
+  test_errors[i, 5] <- mean(yhat_tree_cp05 != ytest_split)
+  test_errors[i, 6] <- mean(yhat_tree_cp1 != ytest_split)
+}
+
+# Convert test errors to data frame for visualization and analysis
+test_errors_df <- data.frame(
+  Split = rep(1:num_splits, times = 6),
+  Model = factor(rep(colnames(test_errors), each = num_splits)),
+  Error = as.vector(test_errors)
+)
+
+# Plot comparative boxplots
+ggplot(test_errors_df, aes(x = Model, y = Error, fill = Model)) +
+  geom_boxplot() +
+  labs(title = "Test Error Distribution Across Models",
+       x = "Model",
+       y = "Test Error") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Perform ANOVA
+anova_results <- aov(Error ~ Model, data = test_errors_df)
+summary(anova_results)
+
+```
+
+
+
+```{r anova-analysis,echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include=FALSE}
+# Combine the test errors into a data frame
+test_errors_df <- data.frame(
+  errors = c("1NN", "7NN", "9NN", "Tree (cp=0)", "Tree (cp=0.05)", "Tree (cp=0.1)"),
+  model = factor(rep(c("1NN", "7NN", "9NN", "Tree (cp=0)", "Tree (cp=0.05)", "Tree (cp=0.1)"), each = 100))
+)
+# test_errors_df
+
+#anova_result <- aov(errors ~ model, data = test_errors_df)
+
+# Print ANOVA summary
+#summary(anova_result)
+
+summary(test_errors_df)
+
+
+```
+
+```{r,echo=FALSE,warning=FALSE,include=TRUE,cache.comments=TRUE,comment = NA,include =FALSE }
+# Check for NA, NaN, or Inf values
+any(is.na(test_errors))
+any(is.nan(test_errors))
+any(is.infinite(test_errors))
+
+# Replace NA/NaN/Inf with a placeholder (e.g., 0 or the mean)
+test_errors[is.na(test_errors) | is.nan(test_errors) | is.infinite(test_errors)] <- NA
+test_errors <- na.omit(test_errors)  # Remove rows with NA values
+
+
+test_errors_df <- data.frame(
+  errors = as.vector(test_errors),  # Flatten the matrix into a single column
+  model = factor(rep(c("1NN", "7NN", "9NN", "Tree (cp=0)", "Tree (cp=0.05)", "Tree (cp=0.1)"), each = nrow(test_errors)))
+)
+
+
+anova_result <- aov(errors ~ model, data = test_errors_df)
+summary(anova_result)
+
+
+
+tukey_results <- TukeyHSD(anova_result)
+print(tukey_results)
+
+```
+
+## 15. Comment extensively on the most general observation and lesson you gleaned from this exploration.
+
+### Dimensionality and Complexity of the Models  
+- The prostate cancer dataset contains a relatively large number of features (dimensionality) given the small sample size, which makes it susceptible to overfitting.
+
+- The KNN models (1NN, 7NN, 9NN) deal with high-dimensional data, and increasing the number of neighbors helps reduce variance and improve generalization.  
+
+- The decision tree models (with varying complexity parameters, cp = 0.1, 0.05, and 0) capture complex interactions within the data, though increasing complexity beyond a point risks overfitting.
+
+### Regularization Techniques and Cross-Validation
+
+- KNN models inherently apply smoothing by averaging over neighboring points, which acts as a form of implicit regularization. 
+
+- Decision trees with complexity parameter (cp) tuning serve as explicit regularization techniques, controlling the depth of the tree and the number of splits to avoid overfitting. 
+
+- Cross-validation is crucial in both methods to evaluate the generalization capability, as the prostate cancer dataset is relatively small, reducing the risk of overfitting.
+
+#### Use of Boxplots and Error Distribution
+
+- Boxplots provide a visual representation of the distribution of test errors across different models, helping to compare their performance.Through well a avaliable if used alone can group the dataset into groups.
+
+- The boxplots illustrate that decision trees (cp = 0, cp = 0.05, cp = 0.1) tend to provide more stable performance, especially when regularization reduces model complexity.
+
+- The KNN models exhibit wider variation in error rates due to the influence of neighbor selection and the model’s reliance on distance metrics, leading to less stable predictions.
+
+#### Significance of ROC Curves
+
+- The ROC curves reveal how well each model balances sensitivity (true positive rate) and specificity (true negative rate). The decision tree (cp = 0) shows the best AUC value (0.8964), indicating strong performance due to its ability to capture complex interactions without overfitting. 
+
+- The KNN models have AUCs lower than the tree, suggesting suboptimal generalization due to their reliance on distance metrics and small sample sizes in relation to the high-dimensional data.
+
+####  Decision Tree Analysis
+
+- The decision tree provides partitioning of the feature space into regions, leading to terminal nodes that represent predicted class labels.
+
+- Terminal nodes from the decision tree with low cp (0.05, 0.1) indicate regions of the feature space where the model captures specific patterns, while the cp = 0 tree tends to overfit by capturing noise from the data.
+
+- The measure of impurity (e.g., Gini index or entropy) helps to split nodes optimally and improve classification performance, especially in the presence of noisy data like the prostate cancer dataset.
+
+#### Hamadas Illness and Regularization
+
+- If Hamadas illness (overfitting due to too many irrelevant features or correlations) is detected, regularization techniques like feature selection (removing near-zero variance features) and cross-validation should be emphasized.
+
+- For decision trees, tuning cp values effectively controls overfitting by pruning excessive splits and improving model simplicity.
+
+- KNN models could also benefit from feature selection and tuning of neighbor numbers to improve generalization and reduce the risk of overfitting.
+
+#### Conclusion
+
+- The decision tree (cp = 0) outperforms other models in terms of AUC, capturing complex relationships without significant overfitting.
+
+- The KNN models demonstrate varying performance depending on the number of neighbors, showing diminishing returns for increased complexity (k = 7 and k = 9).
+
+- Regularization, cross-validation, and impurity measures are critical in managing model complexity, especially when dealing with the high-dimensional prostate cancer dataset.
+
+- Boxplots and ROC curves provide valuable insights into the performance and reliability of these models, helping inform model selection and tuning.
+
+
+
+# Exercise 2: Nearest Neighbors Method for Digit Recognition (30points)
+
+This exercise features the analysis of the USPS digit recognition dataset using kNN with various
+neighborhood sizes.
+
+```{r}
+library(dslabs) # Package by Yann LeCun to provide the MNIST data
+mnist <- read_mnist() # Read in the MNIST data
+xtrain <- mnist$train$images
+ytrain <- mnist$train$labels
+ytrain <- as.factor(ytrain)
+ntr <- nrow(xtrain)
+p <- ncol(xtrain)
+xtest <- mnist$test$images
+ytest <- mnist$test$labels
+ytest <- as.factor(ytest)
+```
+
+
+# Part 1: Multi-class classification on MNIST
+
+Throughout this part of the exercise, you will perform multiclass classification in the MNIST data using the learning machines 1NN, 5NN, 7NN, 9NN, and 13NN.
+
+## 1. Write down in mathematical form the expression of b fkNN(x), the prediction function of the kNN learning machine.
+
+# Prediction Function for kNN
+
+The prediction function \( \hat{f}_{kNN}(x) \) for a kNN learning machine is given by:
+$$
+\hat{f}_{kNN}(x) = \arg\max_{y \in \mathcal{Y}} \sum_{i \in \mathcal{N}_k(x)} \mathbb{1}(y_i = y)
+$$
+
+Where:
+- \( \mathcal{Y} \) is the set of possible labels (digits \( 0, 1, \dots, 9 \)).
+- \( \mathcal{N}_k(x) \) is the set of indices of the \( k \)-nearest neighbors of \( x \) in the training data.
+- \( \mathbb{1}(y_i = y) \) is an indicator function that equals \( 1 \) if the \( i \)-th neighbor's label matches \( y \), and \( 0 \) otherwise.
+
+
+
+
+## 2. Let S = 50 be the number of random splits of the data into 70% training and 30% Test.
+
+
+```{r}
+library(caret)
+library(dslabs) # Package by Yann LeCun to provide the MNIST data
+mnist <- read_mnist() # Read in the MNIST data
+xtrain <- mnist$train$images
+ytrain <- mnist$train$labels
+ytrain <- as.factor(ytrain)
+ntr <- nrow(xtrain)
+p <- ncol(xtrain)
+xtest <- mnist$test$images
+ytest <- mnist$test$labels
+ytest <- as.factor(ytest)
+
+set.seed(123)  # For reproducibility
+
+random_split <- function(x, y, train_prop = 0.7) {
+  # Create a stratified partition
+  train_index <- createDataPartition(y, p = train_prop, list = FALSE)
+  train <- x[train_index, ]
+  test <- x[-train_index, ]
+  list(train = train, test = test)
+}
+
+
+# Perform 50 random splits
+S <- 50
+splits <- replicate(S, random_split(xtrain, ytrain, 0.7), simplify = TRUE)
+
+```
+```{r}
+# Load necessary libraries
+library(dslabs)  # For MNIST dataset
+library(class)   # For k-NN classification
+library(pROC)    # For ROC curves
+library(caret)   # For confusion matrix
+```
+
+
+## (2). Creating a reduced sample from the MNIST dataset
+
+```{r}
+mnist <- read_mnist()
+
+# Specifying the sizes for the smaller training and test datasets
+set.seed(2000224)  
+num_train_samples <- 1500  
+num_test_samples <- 500   
+
+# Selecting random indices for sampling from the MNIST training and test sets
+train_sample_indices <- sample(1:nrow(mnist$train$images), num_train_samples)
+test_sample_indices <- sample(1:nrow(mnist$test$images), num_test_samples)
+
+# Creating the sampled datasets
+x_train <- mnist$train$images[train_sample_indices, ]
+y_train <- as.factor(mnist$train$labels[train_sample_indices])
+x_test <- mnist$test$images[test_sample_indices, ]
+y_test <- as.factor(mnist$test$labels[test_sample_indices])
+
+# Displaying the sizes of the reduced datasets
+cat("Training set size:", nrow(x_train), "x", ncol(x_train), "\n")
+cat("Test set size:", nrow(x_test), "x", ncol(x_test), "\n")
+
+```
+
+## 1. Build all the over 5 models and compute the test errors for each split and store into a matrix of test errors
+
+
+```{r}
+# Subset the training and test data
+x_train <- mnist$train$images[train_sample_indices, ]
+y_train <- as.factor(mnist$train$labels[train_sample_indices])
+x_test <- mnist$test$images[test_sample_indices, ]
+y_test <- as.factor(mnist$test$labels[test_sample_indices])
+
+# Display dataset sizes
+cat("Training set size:", nrow(x_train), "x", ncol(x_train), "\n")
+cat("Test set size:", nrow(x_test), "x", ncol(x_test), "\n")
+
+# Define K values for KNN
+k_values <- c(1, 5, 7, 9, 13)
+
+# Initialize a list to store results
+accuracy_results <- list()
+
+# Loop through each K value and compute KNN
+for (k in k_values) {
+  # Train and predict using KNN
+  y_pred <- knn(train = x_train, test = x_test, cl = y_train, k = k)
+  
+  # Calculate accuracy
+  accuracy <- mean(y_pred == y_test)
+  accuracy_results[[as.character(k)]] <- accuracy
+  
+  # Print results for each K
+  cat(sprintf("Accuracy for %d-NN: %.2f%%\n", k, accuracy * 100))
+}
+```
+
+
+```{r}
+# Convert accuracy results into a data frame for visualization
+accuracy_df <- data.frame(
+  K = k_values,
+  Accuracy = unlist(accuracy_results)
+)
+
+# Optional: Plot the accuracy results
+ggplot(accuracy_df, aes(x = K, y = Accuracy)) +
+  geom_point(size = 4, color = "blue") +
+  geom_line(color = "red", linetype = "dashed") +
+  labs(title = "KNN Accuracy on MNIST Subset",
+       x = "Number of Neighbors (K)",
+       y = "Accuracy") +
+  theme_minimal()
+
+```
+
+
+
+
+
+## 2. Identify the machine with the smallest median test error and generate the test confusion matrix form the last split
+```{r}
+``{r}
+# Identify the best model (smallest median error)
+best_k <- k_values[which.min(summary_errors$Median)]
+cat("Best kNN Model:", best_k, "NN\n")
+
+
+# Confusion matrix for the best model using last split
+
+{r}
+
+final_train_split <- xtrain[split_indices, ]
+final_test_split <- xtrain[-split_indices, ]
+final_ytrain_split <- ytrain[split_indices]
+final_ytest_split <- ytrain[-split_indices]
+
+final_pred <- knn(final_train_split, final_test_split, final_ytrain_split, k = best_k)
+confusion <- confusionMatrix(table(final_pred, final_ytest_split))
+print(confusion)
+```
+
+
+
+## 3. Comment the digits for which there is a lot more confusion. Does that agree with your own prior intuition about digits?
+
+```{r}
+{r, message=FALSE}
+# Subset only digits '1' and '7' from sampled data
+train_binary <- which(ytrain %in% c(1, 7))
+test_binary <- which(ytest %in% c(1, 7))
+
+xtrain_binary <- xtrain[train_binary, ]
+ytrain_binary <- factor(ytrain[train_binary])
+xtest_binary <- xtest[test_binary, ]
+ytest_binary <- factor(ytest[test_binary])
+
+# Train kNN for binary classification
+binary_preds <- list()
+roc_curves <- list()
+
+for (k in k_values) {
+  pred <- knn(xtrain_binary, xtest_binary, ytrain_binary, k = k)
+  binary_preds[[paste0(k, "NN")]] <- pred
+  roc_curves[[paste0(k, "NN")]] <- roc(ytest_binary, as.numeric(pred))
+}
+
+# Plot ROC curves
+plot(roc_curves[[1]], col = "maroon", main = "ROC Curves for Digits 1 vs 7")
+colors <- c("red", "pink", "green", "orange")
+for (i in 2:length(roc_curves)) {
+  lines(roc_curves[[i]], col = colors[i - 1])
+}
+legend("bottomright", legend = names(roc_curves), col = c("maroon", colors), lty = 1)
+
+```
+
+## 3. Perform an ANOVA of the tesr errors and comment on the patterns that emerge.
+
+```{r}
+{r}
+# False Positives and False Negatives
+pred_best <- binary_preds[[paste0(best_k, "NN")]]
+false_positives <- which(pred_best == 7 & ytest_binary == 1)
+false_negatives <- which(pred_best == 1 & ytest_binary == 7)
+
+# Plotting examples of false positives and negatives
+par(mfrow = c(2, 2))
+if (length(false_positives) >= 2) {
+  image(matrix(xtest_binary[false_positives[1], ], 28, 28), main = "FP: True 1 -> Pred 7")
+  image(matrix(xtest_binary[false_positives[2], ], 28, 28), main = "FP: True 1 -> Pred 7")
+}
+if (length(false_negatives) >= 2) {
+  image(matrix(xtest_binary[false_negatives[1], ], 28, 28), main = "FN: True 7 -> Pred 1")
+  image(matrix(xtest_binary[false_negatives[2], ], 28, 28), main = "FN: True 7 -> Pred 1")
+}
+
+par(mfrow = c(1, 1))
+
+
+```
+
+
+# Part 2: Binary classification on MNIST
+
+Consider classifying digit ’1’ against digit ’7’, with ’1’ representing positive and ’7’ representing
+negative. You will be using just 1NN, 5NN, 7NN, 9NN, and 13NN.
+
+## 1. Store in memory your training set and your test set. Of course you must show the command that extracts only ’1’ and ’7’ from both the training and the test sets.
+
+```{r}
+train_17 <- train_data[train_data$label %in% c(1, 7), ]
+test_17 <- test_data[test_data$label %in% c(1, 7), ]
+```
+
+## 2. Display both your training confusion matrix and your test confusion matrix
+
+
+## 3. Display the comparative ROC curves of the three learning machines
+
+
+## 4. Identify two false positives and two false negatives at the test phase, and in each case,plot the true image against its falsely predicted counterpart.
+
+
+## 5. Comment on any pattern that might have emerged.
+
+
+# Exercise 3: Video component (10 points)
+
+
+
+#### **2. kNN Models (1NN, 7NN, 9NN)**
+- **Dimensionality**: 
+  - kNN is sensitive to high-dimensional data, as distance metrics like Euclidean distance lose effectiveness in large feature spaces (a phenomenon known as the "curse of dimensionality"). This can lead to degraded model performance.
+  - Feature scaling can help mitigate this by ensuring all features contribute equally to distance calculations.
+
+- **Model Complexity**:
+  - **1NN** is the simplest model, memorizing the training data. It results in a high-complexity model prone to overfitting, as every sample is classified based solely on its nearest neighbor.
+  - **7NN and 9NN** average predictions over more neighbors, smoothing the decision boundary and reducing variance but potentially increasing bias.
+
+- **Regularization Techniques**:
+  - Regularization in kNN is indirectly controlled by tuning \( k \). A higher \( k \) imposes a stronger regularization effect, simplifying the decision boundary and mitigating overfitting.
+  
+- **Cross-Validation**:
+  - Used to determine the optimal \( k \) by minimizing test error across splits. For this task, 50 random splits were used to validate the performance of 1NN, 7NN, and 9NN.
+
+- **Boxplots**:
+  - Boxplots of test errors across random splits reveal the variance of each model. Models like 1NN may exhibit higher variance, while 7NN and 9NN tend to have narrower error distributions.
+
+- **ROC Curves**:
+  - For binary classification (e.g., distinguishing digits 1 vs. 7), ROC curves measure the tradeoff between true positive rate (sensitivity) and false positive rate (1-specificity). They help visualize and compare the discriminative power of models. AUC (Area Under Curve) quantifies overall performance.
+
+---
+
+#### **3. Decision Tree Models (cp = 0.1, 0.05, 0)**
+- **Dimensionality**:
+  - Decision trees work well with high-dimensional data since they split the feature space recursively, focusing only on relevant features. However, in datasets like MNIST with correlated pixels, they may overfit unless properly regularized.
+
+- **Model Complexity**:
+  - Trees with **cp = 0.1** and **cp = 0.05** are pruned to control the number of splits, reducing overfitting. These models have simpler decision boundaries with fewer terminal nodes.
+  - A tree with **cp = 0** grows to maximum depth, increasing complexity and potentially overfitting.
+
+- **Regions and Terminal Nodes**:
+  - Decision boundaries define regions of the feature space. Each terminal node corresponds to a region where all samples are assigned the same predicted label.
+  - Trees with high complexity have more regions, capturing finer details but losing generalization ability.
+
+- **Regularization Techniques**:
+  - Regularization in decision trees includes:
+    - **Cost Complexity Pruning (cp)**: Limits the number of splits to avoid overfitting.
+    - **Minimum Split Size**: Ensures a node must have enough samples to split further.
+    - **Max Depth**: Restricts the depth of the tree, simplifying the model.
+    - **Cross-Validation**: Used to select the optimal pruning parameter \( cp \).
+
+- **Impurity Measures**:
+  - Impurity determines the quality of splits:
+    - **Gini Index**: Measures how mixed the classes are in a node.
+    - **Entropy**: Quantifies the uncertainty in class distributions.
+    - The tree aims to minimize impurity at each split.
+
+- **Boxplots**:
+  - Boxplots of test errors for trees with different \( cp \) values illustrate the tradeoff between underfitting (high \( cp \)) and overfitting (low \( cp \)). Trees with moderate \( cp \) values (e.g., 0.05) often perform best.
+
+- **Significance of ROC Curves**:
+  - ROC curves for decision trees highlight their ability to rank predictions. For example, a tree with high \( cp \) may yield a smoother curve (better generalization), while one with \( cp = 0 \) may overfit, reducing AUC.
+
+---
+
+#### **4. Regularization for Hamada’s Illness Detection**
+In a medical context like detecting Hamada’s illness:
+- Regularization ensures that the model is interpretable and avoids overfitting to noisy or irrelevant features. Overfitting can lead to poor generalization, a critical issue in medical diagnostics.
+
+**Techniques**:
+- For kNN:
+  - Increase \( k \) to reduce variance and improve stability.
+- For decision trees:
+  - Pruning (e.g., adjusting \( cp \)).
+  - Feature selection to remove irrelevant inputs.
+  - Ensemble methods like random forests for better robustness.
+
+
+#### **5. Comparison and Key Insights**
+- **Dimensionality**:
+  - kNN suffers more from high-dimensionality issues compared to decision trees, which handle irrelevant features better through splits.
+  
+- **Complexity**:
+  - Simpler models (e.g., 7NN, tree with \( cp = 0.1 \)) generalize better, avoiding overfitting common in 1NN or unpruned trees.
+
+- **Performance Evaluation**:
+  - Cross-validation ensures robustness, while ROC curves provide a detailed view of binary classification performance.
+  
+- **Boxplots**:
+  - Useful to summarize model stability across splits. Lower variance and median errors often indicate better models.
+
+- **Significance of ROC and Impurity**:
+  - ROC evaluates ranking ability and sensitivity to imbalanced classes.
+  - Impurity measures ensure meaningful splits in decision trees, directly impacting classification performance.
+
+--- 
+
+
+```{r}
+# Load necessary libraries
+library(dslabs)      # For MNIST data
+library(class)       # For kNN
+library(caret)       # For data splitting and confusion matrix
+library(reshape2)    # For reshaping data
+library(ggplot2)     # For plotting
+
+# Load MNIST dataset
+mnist <- read_mnist()
+xtrain <- mnist$train$images        # Training images
+ytrain <- as.factor(mnist$train$labels) # Training labels as factors
+xtest <- mnist$test$images          # Test images
+ytest <- as.factor(mnist$test$labels)   # Test labels as factors
+
+# Check dimensions of the data
+cat("Training Data Dimensions:", dim(xtrain), "\n")
+cat("Test Data Dimensions:", dim(xtest), "\n")
+
+# Define k values for kNN models
+k_values <- c(1, 5, 7, 9, 13)
+
+# 1. Expression of the kNN prediction function:
+cat("\nThe kNN prediction function is mathematically represented as:\n")
+cat("f̂_kNN(x) = argmax_y ∈ Y ∑_{i ∈ N_k(x)} 1(y_i = y)\n\n")
+
+# Number of random splits
+S <- 50
+test_errors <- matrix(NA, nrow = S, ncol = length(k_values)) # Store test errors for each k
+
+set.seed(123)  # Set seed for reproducibility
+
+# Perform random splits and evaluate kNN models
+for (s in 1:S) {
+  cat("Processing Split", s, "...\n")
+  
+  # 2.1 Randomly split the data into 70% train and 30% test
+  train_idx <- createDataPartition(ytrain, p = 0.7, list = FALSE)
+  xtrain_split <- xtrain[train_idx, ]
+  ytrain_split <- ytrain[train_idx]
+  xtest_split <- xtrain[-train_idx, ]
+  ytest_split <- ytrain[-train_idx]
+  
+  # Compute test errors for each k
+  for (j in seq_along(k_values)) {
+    k <- k_values[j]
+    y_pred <- knn(train = xtrain_split, test = xtest_split, cl = ytrain_split, k = k)
+    test_errors[s, j] <- mean(y_pred != ytest_split) # Calculate error rate
+  }
+}
+
+# Assign column names for clarity
+colnames(test_errors) <- paste0(k_values, "NN")
+
+# 2.2 Identify the model with the smallest median test error
+median_errors <- apply(test_errors, 2, median)
+best_k <- k_values[which.min(median_errors)]
+cat("\nBest k:", best_k, "\n")
+
+# Generate confusion matrix for the last split
+last_split_idx <- S
+train_idx <- createDataPartition(ytrain, p = 0.7, list = FALSE)
+xtrain_last_split <- xtrain[train_idx, ]
+ytrain_last_split <- ytrain[train_idx]
+xtest_last_split <- xtrain[-train_idx, ]
+ytest_last_split <- ytrain[-train_idx]
+
+y_pred_best <- knn(train = xtrain_last_split, test = xtest_last_split, cl = ytrain_last_split, k = best_k)
+confusion <- confusionMatrix(y_pred_best, ytest_last_split)
+print(confusion)
+
+# 2.3 Comment on confusion patterns
+cat("\nConfusion Matrix Analysis:\n")
+cat("Digits with significant confusion are often those with similar shapes, e.g.,\n")
+cat("3 and 5, 8 and 0, or 4 and 9. These align with typical challenges in handwritten digit recognition.\n\n")
+
+# 3. Perform ANOVA on test errors
+test_errors_df <- melt(as.data.frame(test_errors)) # Convert matrix to long format
+colnames(test_errors_df) <- c("Split", "Model", "Error")
+
+anova_results <- aov(Error ~ Model, data = test_errors_df)
+cat("\nANOVA Results:\n")
+print(summary(anova_results))
+
+# Plot test errors for visualization
+ggplot(test_errors_df, aes(x = Model, y = Error)) +
+  geom_boxplot(fill = "skyblue") +
+  labs(title = "Test Errors Across kNN Models",
+       x = "kNN Model",
+       y = "Test Error") +
+  theme_minimal()
+
+```
+
+
+
+This summary highlights the interplay of dimensionality, model complexity, regularization, and evaluation techniques in comparing kNN and decision tree models for MNIST. Let me know if you'd like me to focus further on any specific aspect!
+
+The highest AUC of 0.8964 from the decision tree with cp=0 suggests it provides the best balance between bias and variance, with excellent generalization.
+The KNN models (7NN and 9NN) offer slightly improved performance over 1NN but show diminishing returns beyond 7 neighbors.
+The AUCs from the decision tree models with varying cp values reflect appropriate trade-offs between model complexity and performance.
+Overall, the results are largely in line with the theoretical expectations regarding model complexity and generalization ability.
